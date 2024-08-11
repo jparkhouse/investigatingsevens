@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use game_board::{GameBoard, GameBoardError};
+use card_and_enums::{Card, NumberEnum, SuitEnum};
+use game_state::{GameState, GameStateError};
 use multi_counter::MultiCounter;
 use rand::{seq::SliceRandom, thread_rng};
-use thiserror::Error;
 
 fn main() -> Result<(), String> {
     let mut branches: Vec<GameState> = Vec::new();
@@ -65,72 +65,110 @@ fn process_branches(
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-struct Card {
-    suit: SuitEnum,
-    number: NumberEnum,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum SuitEnum {
-    Spade,
-    Club,
-    Heart,
-    Diamond,
-}
-
-impl SuitEnum {
-    fn iterator() -> impl Iterator<Item = SuitEnum> {
-        [
-            SuitEnum::Spade,
-            SuitEnum::Club,
-            SuitEnum::Heart,
-            SuitEnum::Diamond,
-        ]
-        .into_iter()
+mod card_and_enums {
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Card {
+        pub suit: SuitEnum,
+        pub number: NumberEnum,
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum NumberEnum {
-    Ace,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    Ten,
-    Jack,
-    Queen,
-    King,
-}
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum SuitEnum {
+        Spade,
+        Club,
+        Heart,
+        Diamond,
+    }
 
-impl NumberEnum {
-    fn iterator() -> impl Iterator<Item = NumberEnum> {
-        [
-            NumberEnum::Ace,
-            NumberEnum::Two,
-            NumberEnum::Three,
-            NumberEnum::Four,
-            NumberEnum::Five,
-            NumberEnum::Six,
-            NumberEnum::Seven,
-            NumberEnum::Eight,
-            NumberEnum::Nine,
-            NumberEnum::Ten,
-            NumberEnum::Jack,
-            NumberEnum::Queen,
-            NumberEnum::King,
-        ]
-        .into_iter()
+    impl SuitEnum {
+        pub fn iterator() -> impl Iterator<Item = SuitEnum> {
+            [
+                SuitEnum::Spade,
+                SuitEnum::Club,
+                SuitEnum::Heart,
+                SuitEnum::Diamond,
+            ]
+            .into_iter()
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum NumberEnum {
+        Ace,
+        Two,
+        Three,
+        Four,
+        Five,
+        Six,
+        Seven,
+        Eight,
+        Nine,
+        Ten,
+        Jack,
+        Queen,
+        King,
+    }
+
+    impl NumberEnum {
+        pub fn iterator() -> impl Iterator<Item = NumberEnum> {
+            [
+                NumberEnum::Ace,
+                NumberEnum::Two,
+                NumberEnum::Three,
+                NumberEnum::Four,
+                NumberEnum::Five,
+                NumberEnum::Six,
+                NumberEnum::Seven,
+                NumberEnum::Eight,
+                NumberEnum::Nine,
+                NumberEnum::Ten,
+                NumberEnum::Jack,
+                NumberEnum::Queen,
+                NumberEnum::King,
+            ]
+            .into_iter()
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+
+        #[test]
+        fn suitenum_iterator_contains_all_suits() {
+            let output: Vec<SuitEnum> = SuitEnum::iterator().collect();
+
+            assert_eq!(output.len(), 4);
+            assert!(output.contains(&SuitEnum::Club));
+            assert!(output.contains(&SuitEnum::Spade));
+            assert!(output.contains(&SuitEnum::Diamond));
+            assert!(output.contains(&SuitEnum::Heart));
+        }
+
+        #[test]
+        fn numberenum_iterator_contains_all_numbers() {
+            let output: Vec<NumberEnum> = NumberEnum::iterator().collect();
+
+            assert_eq!(output.len(), 13);
+            assert!(output.contains(&NumberEnum::Ace));
+            assert!(output.contains(&NumberEnum::Two));
+            assert!(output.contains(&NumberEnum::Three));
+            assert!(output.contains(&NumberEnum::Four));
+            assert!(output.contains(&NumberEnum::Five));
+            assert!(output.contains(&NumberEnum::Six));
+            assert!(output.contains(&NumberEnum::Seven));
+            assert!(output.contains(&NumberEnum::Eight));
+            assert!(output.contains(&NumberEnum::Nine));
+            assert!(output.contains(&NumberEnum::Ten));
+            assert!(output.contains(&NumberEnum::Jack));
+            assert!(output.contains(&NumberEnum::Queen));
+            assert!(output.contains(&NumberEnum::King));
+        }
     }
 }
 
 mod stack {
-    use super::{Card, NumberEnum, SuitEnum};
+    use crate::card_and_enums::{Card, NumberEnum, SuitEnum};
     use thiserror::Error;
 
     #[derive(Debug, Clone)]
@@ -302,6 +340,38 @@ mod stack {
                 // not contained in the playable cards, therefore an unplayable number
                 return Err(StackError::UnplayableCardNumber);
             }
+        }
+
+        #[cfg(test)]
+        pub fn from(
+            suit: SuitEnum,
+            up_card: Option<Card>,
+            down_card: Option<Card>,
+        ) -> Result<Stack, StackError> {
+            let output = Stack {
+                suit: suit,
+                up_card: up_card,
+                down_card: down_card,
+            };
+            match output.get_playable_cards() {
+                Ok(_) => Ok(output),
+                Err(e) => Err(e),
+            }
+        }
+
+        #[cfg(test)]
+        pub fn get_completed_stack(suit: SuitEnum) -> Stack {
+            return Stack {
+                suit: suit,
+                up_card: Some(Card {
+                    suit: suit,
+                    number: NumberEnum::King,
+                }),
+                down_card: Some(Card {
+                    suit: suit,
+                    number: NumberEnum::Ace,
+                }),
+            };
         }
     }
 
@@ -606,7 +676,7 @@ mod stack {
 
 mod game_board {
 
-    use super::{Card, SuitEnum};
+    use crate::card_and_enums::{Card, SuitEnum};
     use crate::stack::{Stack, StackError};
     use thiserror::Error;
 
@@ -632,6 +702,23 @@ mod game_board {
                 heart_stack: Stack::new(SuitEnum::Heart),
                 diamond_stack: Stack::new(SuitEnum::Diamond),
             };
+        }
+
+        #[cfg(test)]
+        pub fn from(stacks: Vec<Stack>) -> Result<GameBoard, GameBoardError> {
+            let mut output = GameBoard::new();
+            for st in stacks {
+                match st.suit {
+                    SuitEnum::Spade => output.spade_stack = st,
+                    SuitEnum::Club => output.club_stack = st,
+                    SuitEnum::Heart => output.heart_stack = st,
+                    SuitEnum::Diamond => output.diamond_stack = st,
+                }
+            }
+            match output.get_playable_cards() {
+                Ok(_) => return Ok(output),
+                Err(e) => return Err(e),
+            }
         }
 
         pub fn get_playable_cards(&self) -> Result<Option<Vec<Card>>, GameBoardError> {
@@ -698,8 +785,8 @@ mod game_board {
 
     #[cfg(test)]
     mod test {
-
         use super::*;
+        use crate::card_and_enums::{NumberEnum, SuitEnum};
 
         #[test]
         fn initialization() {
@@ -726,19 +813,19 @@ mod game_board {
             assert_eq!(output.len(), 4);
             assert!(output.contains(&Card {
                 suit: SuitEnum::Club,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Spade,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Heart,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Diamond,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
         }
 
@@ -748,7 +835,7 @@ mod game_board {
 
             game_board
                 .club_stack
-                .play_card(crate::NumberEnum::Seven)
+                .play_card(NumberEnum::Seven)
                 .expect("Failed to play seven");
 
             let output = game_board.get_playable_cards();
@@ -762,23 +849,23 @@ mod game_board {
             assert_eq!(output.len(), 5);
             assert!(output.contains(&Card {
                 suit: SuitEnum::Club,
-                number: crate::NumberEnum::Eight
+                number: NumberEnum::Eight
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Club,
-                number: crate::NumberEnum::Six
+                number: NumberEnum::Six
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Spade,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Heart,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
             assert!(output.contains(&Card {
                 suit: SuitEnum::Diamond,
-                number: crate::NumberEnum::Seven
+                number: NumberEnum::Seven
             }));
         }
 
@@ -788,7 +875,7 @@ mod game_board {
 
             match game_board.play_card(Card {
                 suit: SuitEnum::Diamond,
-                number: crate::NumberEnum::Seven,
+                number: NumberEnum::Seven,
             }) {
                 Ok(_) => {}
                 Err(e) => panic!("Error playing diamond 7 on empty gameboard: {e}"),
@@ -801,11 +888,18 @@ mod game_board {
 
             let output = game_board.play_card(Card {
                 suit: SuitEnum::Diamond,
-                number: crate::NumberEnum::Six,
+                number: NumberEnum::Six,
             });
 
             assert!(output.is_err());
-            assert_eq!(output.unwrap_err().to_string(), GameBoardError::StackError(StackError::UnplayableCardNumber, "Diamonds".to_string()).to_string())
+            assert_eq!(
+                output.unwrap_err().to_string(),
+                GameBoardError::StackError(
+                    StackError::UnplayableCardNumber,
+                    "Diamonds".to_string()
+                )
+                .to_string()
+            )
         }
     }
 }
@@ -821,123 +915,293 @@ impl Player {
     }
 }
 
-#[derive(Debug, Clone)]
-struct GameState {
-    game_board: GameBoard,
-    players: Vec<Player>,
-    player_turn: u8,
-}
+mod game_state {
 
-#[derive(Debug, Error)]
-enum GameStateError {
-    #[error("Players exceeded 26 player limit")]
-    TooManyPlayers,
+    use super::{distribute_cards, generate_new_shuffle, Player};
+    use crate::card_and_enums::Card;
+    use crate::game_board::{GameBoard, GameBoardError};
+    use thiserror::Error;
 
-    #[error("u8 overflow error")]
-    OverflowError,
-
-    #[error("GameBoard Error: {0}")]
-    GameBoardError(#[from] GameBoardError),
-
-    #[error("Called {0} on a state with more than one playable card")]
-    MoreThanOnePlayableCard(String),
-
-    #[error("Called {0} on a state with no playable card")]
-    NoPlayableCard(String),
-
-    #[error("Called play_card_and_return on a state with only one playable card, consider using play_only_playable_card")]
-    OnlyOnePlayableCard,
-
-    #[error("Attempted to play an unplayable card in play_card_and_return")]
-    UnplayableCard,
-}
-
-impl GameState {
-    fn new(number_of_players: usize) -> Result<GameState, GameStateError> {
-        if number_of_players > 26 {
-            return Err(GameStateError::TooManyPlayers);
-        }
-        let deck = generate_new_shuffle();
-        let players = distribute_cards(number_of_players, deck);
-        return Ok(GameState {
-            game_board: GameBoard::new(),
-            players: players,
-            player_turn: 0,
-        });
+    #[derive(Debug, Clone)]
+    pub struct GameState {
+        game_board: GameBoard,
+        pub players: Vec<Player>,
+        pub player_turn: u8,
     }
 
-    fn pass_turn(&mut self) -> Result<(), GameStateError> {
-        if self.players.len() > u8::MAX.into() {
-            return Err(GameStateError::OverflowError);
-        }
-        if self.player_turn < self.players.len() as u8 - 1 {
-            self.player_turn += 1;
-            return Ok(());
-        } else {
-            self.player_turn = 0;
-            return Ok(());
-        }
+    #[derive(Debug, Error)]
+    pub enum GameStateError {
+        #[error("Players exceeded 26 player limit")]
+        TooManyPlayers,
+
+        #[error("u8 overflow error")]
+        OverflowError,
+
+        #[error("GameBoard Error: {0}")]
+        GameBoardError(#[from] GameBoardError),
+
+        #[error("Called {0} on a state with more than one playable card")]
+        MoreThanOnePlayableCard(String),
+
+        #[error("Called {0} on a state with no playable card")]
+        NoPlayableCard(String),
+
+        #[error("Called play_card_and_return on a state with only one playable card, consider using play_only_playable_card")]
+        OnlyOnePlayableCard,
+
+        #[error("Attempted to play an unplayable card in play_card_and_return")]
+        UnplayableCard,
     }
 
-    fn play_only_playable_card(&mut self) -> Result<(), GameStateError> {
-        let playable = match self.game_board.get_playable_cards() {
-            Ok(result) => result,
-            Err(e) => return Err(GameStateError::GameBoardError(e)),
-        };
-        let card = match playable {
-            Some(card) => {
-                if card.len() > 1 {
-                    return Err(GameStateError::MoreThanOnePlayableCard(
-                        "play_only_playable_card".to_string(),
-                    ));
-                } else {
-                    card[0].to_owned()
+    impl GameState {
+        pub fn new(number_of_players: usize) -> Result<GameState, GameStateError> {
+            if number_of_players > 26 {
+                return Err(GameStateError::TooManyPlayers);
+            }
+            let deck = generate_new_shuffle();
+            let players = distribute_cards(number_of_players, deck);
+            return Ok(GameState {
+                game_board: GameBoard::new(),
+                players: players,
+                player_turn: 0,
+            });
+        }
+
+        pub fn pass_turn(&mut self) -> Result<(), GameStateError> {
+            if self.player_turn == u8::MAX.into() {
+                return Err(GameStateError::OverflowError);
+            }
+            if self.player_turn < self.players.len() as u8 - 1 {
+                self.player_turn += 1;
+                return Ok(());
+            } else {
+                self.player_turn = 0;
+                return Ok(());
+            }
+        }
+
+        pub fn play_only_playable_card(&mut self) -> Result<(), GameStateError> {
+            let playable = match self.game_board.get_playable_cards() {
+                Ok(result) => result,
+                Err(e) => return Err(GameStateError::GameBoardError(e)),
+            };
+            let card = match playable {
+                Some(card) => {
+                    if card.len() > 1 {
+                        return Err(GameStateError::MoreThanOnePlayableCard(
+                            "play_only_playable_card".to_string(),
+                        ));
+                    } else {
+                        card[0].to_owned()
+                    }
                 }
-            }
-            None => {
-                return Err(GameStateError::NoPlayableCard(
-                    "play_only_playable_card".to_string(),
-                ))
-            }
-        };
-        self.game_board
-            .play_card(card)
-            .map_err(|e| GameStateError::GameBoardError(e))?;
-        self.pass_turn()?;
-        return Ok(());
-    }
+                None => {
+                    return Err(GameStateError::NoPlayableCard(
+                        "play_only_playable_card".to_string(),
+                    ))
+                }
+            };
+            self.game_board
+                .play_card(card)
+                .map_err(|e| GameStateError::GameBoardError(e))?;
+            self.pass_turn()?;
+            return Ok(());
+        }
 
-    fn play_card_and_return(&self, card: Card) -> Result<GameState, GameStateError> {
-        let get_playable = match self.game_board.get_playable_cards() {
-            Ok(result) => result,
-            Err(e) => return Err(GameStateError::GameBoardError(e)),
-        };
-        let playable_cards = match get_playable {
-            Some(result) => match result.len() {
-                0 => {
+        pub fn play_card_and_return_new(&self, card: Card) -> Result<GameState, GameStateError> {
+            let get_playable = match self.game_board.get_playable_cards() {
+                Ok(result) => result,
+                Err(e) => return Err(GameStateError::GameBoardError(e)),
+            };
+            let playable_cards = match get_playable {
+                Some(result) => match result.len() {
+                    0 => {
+                        return Err(GameStateError::NoPlayableCard(
+                            "play_card_and_return".to_string(),
+                        ))
+                    }
+                    1 => return Err(GameStateError::OnlyOnePlayableCard),
+                    _ => result,
+                },
+                None => {
                     return Err(GameStateError::NoPlayableCard(
                         "play_card_and_return".to_string(),
                     ))
                 }
-                1 => return Err(GameStateError::OnlyOnePlayableCard),
-                _ => result,
-            },
-            None => {
-                return Err(GameStateError::NoPlayableCard(
-                    "play_card_and_return".to_string(),
-                ))
+            };
+            if !playable_cards.contains(&card) {
+                return Err(GameStateError::UnplayableCard);
+            } else {
+                let mut output = self.clone();
+                output
+                    .game_board
+                    .play_card(card)
+                    .map_err(|e| GameStateError::GameBoardError(e))?;
+                output.pass_turn()?;
+                return Ok(output);
             }
+        }
+
+        pub fn get_playable_cards(&self) -> Result<Option<Vec<Card>>, GameStateError> {
+            match self.game_board.get_playable_cards() {
+                Ok(cards_option) => Ok(cards_option),
+                Err(e) => Err(GameStateError::GameBoardError(e)),
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+
+        use crate::{
+            card_and_enums::{NumberEnum, SuitEnum}, game_state, stack::Stack
         };
-        if !playable_cards.contains(&card) {
-            return Err(GameStateError::UnplayableCard);
-        } else {
-            let mut output = self.clone();
-            output
-                .game_board
-                .play_card(card)
-                .map_err(|e| GameStateError::GameBoardError(e))?;
-            output.pass_turn()?;
-            return Ok(output);
+
+        use super::*;
+
+        #[test]
+        fn initialization_with_valid_player_count() {
+            let game_state = GameState::new(4);
+
+            assert!(game_state.is_ok());
+            let game_state = game_state.unwrap();
+
+            assert_eq!(game_state.players.len(), 4);
+            assert_eq!(game_state.player_turn, 0 as u8);
+        }
+
+        #[test]
+        fn initialization_with_invalid_player_count() {
+            let game_state = GameState::new(30);
+
+            assert!(game_state.is_err());
+            let game_state = game_state.unwrap_err();
+
+            assert_eq!(
+                game_state.to_string(),
+                GameStateError::TooManyPlayers.to_string()
+            );
+        }
+
+        #[test]
+        fn pass_turn_advances_player_turn() {
+            let game_state = GameState::new(4);
+            assert!(game_state.is_ok());
+            let mut game_state = game_state.unwrap();
+
+            assert_eq!(game_state.player_turn, 0 as u8);
+            let output = game_state.pass_turn();
+            assert!(output.is_ok());
+            assert_eq!(game_state.player_turn, 1 as u8);
+        }
+
+        #[test]
+        fn pass_turn_catches_overflow_err() {
+            let game_state = GameState::new(4);
+            assert!(game_state.is_ok());
+            let mut game_state = game_state.unwrap();
+
+            game_state.player_turn = 255 as u8;
+            let output = game_state.pass_turn();
+            assert!(output.is_err());
+            let output = output.unwrap_err();
+            assert_eq!(
+                output.to_string(),
+                GameStateError::OverflowError.to_string()
+            );
+        }
+
+        #[test]
+        fn pass_turn_resets_to_0_after_last_player_turn() {
+            let game_state = GameState::new(3);
+            assert!(game_state.is_ok());
+            let mut game_state = game_state.unwrap();
+            game_state.player_turn = 2;
+
+            let output = game_state.pass_turn();
+            assert!(output.is_ok());
+            assert_eq!(game_state.player_turn, 0 as u8);
+        }
+
+        #[test]
+        fn play_only_playable_card_errors_with_multiple_playable_cards() {
+            let mut game_state = GameState::new(3).unwrap();
+            let output = game_state.play_only_playable_card();
+            assert!(output.is_err());
+            let output = output.unwrap_err();
+            assert_eq!(
+                output.to_string(),
+                GameStateError::MoreThanOnePlayableCard("play_only_playable_card".to_string())
+                    .to_string()
+            );
+        }
+
+        #[test]
+        fn play_only_playable_card_plays_with_one_playable_card() {
+            let mut game_state = GameState::new(3).unwrap();
+            let game_board = GameBoard::from(vec![
+                Stack::get_completed_stack(SuitEnum::Club),
+                Stack::get_completed_stack(SuitEnum::Spade),
+                Stack::get_completed_stack(SuitEnum::Heart),
+            ])
+            .unwrap();
+            game_state.game_board = game_board;
+            let output = game_state.play_only_playable_card();
+            assert!(output.is_ok());
+
+            assert_eq!(game_state.player_turn, 1); // turn was passed
+
+            let playables = match game_state.get_playable_cards() {
+                Ok(cards) => cards.unwrap(),
+                Err(e) => panic!("{e}"),
+            };
+
+            // since we have played the seven of diamonds
+            // the next playable cards will be the six and the seven of diamonds
+            assert_eq!(playables.len(), 2);
+            assert!(playables.contains(&Card {
+                suit: SuitEnum::Diamond,
+                number: NumberEnum::Eight,
+            }));
+            assert!(playables.contains(&Card {
+                suit: SuitEnum::Diamond,
+                number: NumberEnum::Six,
+            }));
+        }
+
+        #[test]
+        fn play_only_playable_card_errors_with_no_playable_card() {
+            let mut game_state = GameState::new(3).unwrap();
+            let game_board = GameBoard::from(vec![
+                Stack::get_completed_stack(SuitEnum::Club),
+                Stack::get_completed_stack(SuitEnum::Spade),
+                Stack::get_completed_stack(SuitEnum::Heart),
+                Stack::get_completed_stack(SuitEnum::Diamond),
+            ])
+            .unwrap(); // get a completed board
+            game_state.game_board = game_board; // use it
+            let output = game_state.play_only_playable_card();
+            assert!(output.is_err());
+
+            let output = output.unwrap_err();
+            assert_eq!(
+                output.to_string(),
+                GameStateError::NoPlayableCard("play_only_playable_card".to_string()).to_string()
+            )
+        }
+
+        #[test]
+        fn play_card_and_return_new_succeeds() {
+            let game_state = GameState::new(3);
+            assert!(game_state.is_ok());
+            let game_state = game_state.unwrap();
+            let output = game_state.play_card_and_return_new(Card {
+                suit: SuitEnum::Club,
+                number: NumberEnum::Seven
+            });
+            assert!(output.is_ok());
+            let output = output.unwrap();
+            
         }
     }
 }
@@ -1199,7 +1463,6 @@ mod multi_counter {
     }
 }
 
-mod decisions {}
 enum Decision {
     Victory(u8),
     NoPlayableCards(GameState),
@@ -1214,7 +1477,7 @@ fn assess_decision(mut game_state: GameState) -> Result<Decision, GameStateError
     {
         return Ok(Decision::Victory(game_state.player_turn));
     }
-    let playable_cards = match game_state.game_board.get_playable_cards() {
+    let playable_cards = match game_state.get_playable_cards() {
         Ok(playable) => match playable {
             Some(cards) => cards,
             None => {
@@ -1222,7 +1485,7 @@ fn assess_decision(mut game_state: GameState) -> Result<Decision, GameStateError
                 return Ok(Decision::NoPlayableCards(game_state));
             }
         },
-        Err(e) => return Err(GameStateError::GameBoardError(e)),
+        Err(e) => return Err(e),
     };
     if playable_cards.len() == 1 {
         game_state.play_only_playable_card()?;
@@ -1230,7 +1493,7 @@ fn assess_decision(mut game_state: GameState) -> Result<Decision, GameStateError
     } else {
         let output: Result<Vec<GameState>, GameStateError> = playable_cards
             .into_iter()
-            .map(|card| game_state.play_card_and_return(card))
+            .map(|card| game_state.play_card_and_return_new(card))
             .collect();
         match output {
             Ok(result) => Ok(Decision::MultiplePlayableCards(result)),
