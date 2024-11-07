@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use card_and_enums::{Card, NumberEnum, SuitEnum};
-use game_state::{GameState, GameStateError};
 use multi_counter::MultiCounter;
 use rand::{seq::SliceRandom, thread_rng};
 
@@ -339,23 +338,6 @@ mod stack {
             } else {
                 // not contained in the playable cards, therefore an unplayable number
                 return Err(StackError::UnplayableCardNumber);
-            }
-        }
-
-        #[cfg(test)]
-        pub fn from(
-            suit: SuitEnum,
-            up_card: Option<Card>,
-            down_card: Option<Card>,
-        ) -> Result<Stack, StackError> {
-            let output = Stack {
-                suit: suit,
-                up_card: up_card,
-                down_card: down_card,
-            };
-            match output.get_playable_cards() {
-                Ok(_) => Ok(output),
-                Err(e) => Err(e),
             }
         }
 
@@ -1054,7 +1036,7 @@ mod game_state {
     mod tests {
 
         use crate::{
-            card_and_enums::{NumberEnum, SuitEnum}, game_state, stack::Stack
+            card_and_enums::{NumberEnum, SuitEnum}, stack::Stack
         };
 
         use super::*;

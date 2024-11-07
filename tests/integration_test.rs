@@ -1,4 +1,6 @@
-use investigating_sevens::{Card, GameState, NumberEnum, SuitEnum};
+use investigating_sevens::card_and_enums::{Card, NumberEnum, SuitEnum};
+use investigating_sevens::game_state::GameState;
+use investigating_sevens::{assess_decision, Decision};
 
 #[test]
 fn test_game_initialization() {
