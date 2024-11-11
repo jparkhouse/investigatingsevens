@@ -65,7 +65,7 @@ fn process_branches(
     }
 }
 
-pub(crate) mod card_and_enums {
+pub mod card_and_enums {
     #[derive(Debug, Clone, PartialEq)]
     pub struct Card {
         pub suit: SuitEnum,
@@ -167,7 +167,7 @@ pub(crate) mod card_and_enums {
     }
 }
 
-pub(crate) mod stack {
+pub mod stack {
     use crate::card_and_enums::{Card, NumberEnum, SuitEnum};
     use thiserror::Error;
 
@@ -657,7 +657,7 @@ pub(crate) mod stack {
     }
 }
 
-pub(crate) mod game_board {
+pub mod game_board {
 
     use crate::card_and_enums::{Card, SuitEnum};
     use crate::stack::{Stack, StackError};
@@ -898,7 +898,7 @@ impl Player {
     }
 }
 
-pub(crate) mod game_state {
+pub mod game_state {
 
     use super::{distribute_cards, generate_new_shuffle, Player};
     use crate::card_and_enums::Card;
@@ -1216,7 +1216,7 @@ fn distribute_cards(number_of_players: usize, deck: Vec<Card>) -> Vec<Player> {
     players
 }
 
-pub(crate) mod multi_counter {
+pub mod multi_counter {
     pub struct MultiCounter {
         counter_maxes: Vec<usize>,
         require_simultaneous_completion: bool,
