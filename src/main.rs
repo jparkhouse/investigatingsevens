@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use card_and_enums::{Card, NumberEnum, SuitEnum};
-use game_state::{GameState, GameStateError};
 use multi_counter::MultiCounter;
 use rand::{seq::SliceRandom, thread_rng};
+use crate::game_state::{GameState, GameStateError};
 
 fn main() -> Result<(), String> {
     let mut branches: Vec<GameState> = Vec::new();
@@ -65,7 +65,7 @@ fn process_branches(
     }
 }
 
-mod card_and_enums {
+pub mod card_and_enums {
     #[derive(Debug, Clone, PartialEq)]
     pub struct Card {
         pub suit: SuitEnum,
@@ -167,7 +167,7 @@ mod card_and_enums {
     }
 }
 
-mod stack {
+pub mod stack {
     use crate::card_and_enums::{Card, NumberEnum, SuitEnum};
     use thiserror::Error;
 
@@ -339,23 +339,6 @@ mod stack {
             } else {
                 // not contained in the playable cards, therefore an unplayable number
                 return Err(StackError::UnplayableCardNumber);
-            }
-        }
-
-        #[cfg(test)]
-        pub fn from(
-            suit: SuitEnum,
-            up_card: Option<Card>,
-            down_card: Option<Card>,
-        ) -> Result<Stack, StackError> {
-            let output = Stack {
-                suit: suit,
-                up_card: up_card,
-                down_card: down_card,
-            };
-            match output.get_playable_cards() {
-                Ok(_) => Ok(output),
-                Err(e) => Err(e),
             }
         }
 
@@ -674,7 +657,7 @@ mod stack {
     }
 }
 
-mod game_board {
+pub mod game_board {
 
     use crate::card_and_enums::{Card, SuitEnum};
     use crate::stack::{Stack, StackError};
@@ -915,7 +898,7 @@ impl Player {
     }
 }
 
-mod game_state {
+pub mod game_state {
 
     use super::{distribute_cards, generate_new_shuffle, Player};
     use crate::card_and_enums::Card;
@@ -1054,7 +1037,7 @@ mod game_state {
     mod tests {
 
         use crate::{
-            card_and_enums::{NumberEnum, SuitEnum}, game_state, stack::Stack
+            card_and_enums::{NumberEnum, SuitEnum}, stack::Stack
         };
 
         use super::*;
@@ -1233,7 +1216,7 @@ fn distribute_cards(number_of_players: usize, deck: Vec<Card>) -> Vec<Player> {
     players
 }
 
-mod multi_counter {
+pub mod multi_counter {
     pub struct MultiCounter {
         counter_maxes: Vec<usize>,
         require_simultaneous_completion: bool,
