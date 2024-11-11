@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use card_and_enums::{Card, NumberEnum, SuitEnum};
 use multi_counter::MultiCounter;
 use rand::{seq::SliceRandom, thread_rng};
+use crate::game_state::{GameState, GameStateError};
 
 fn main() -> Result<(), String> {
     let mut branches: Vec<GameState> = Vec::new();
