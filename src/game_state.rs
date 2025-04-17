@@ -70,7 +70,7 @@ impl GameState {
     }
 
     pub fn play_only_playable_card(&mut self) -> Result<(), GameStateError> {
-        let playable_cards = self.game_board.get_playable_cards();
+        let playable_cards = self.get_playable_cards();
         let playable = match playable_cards.len() {
             0 => {
                 return Err(GameStateError::NoPlayableCard(
@@ -84,9 +84,8 @@ impl GameState {
                 ))
             }
         };
-        self.game_board
-            .play_card(playable)
-            .map_err(|e| GameStateError::GameBoardError(e))?;
+        self
+            .play_card(playable)?;
         self.pass_turn();
         return Ok(());
     }
@@ -98,9 +97,7 @@ impl GameState {
         } else {
             let mut output = self.clone();
             output
-                .game_board
-                .play_card(card)
-                .map_err(|e| GameStateError::GameBoardError(e))?;
+                .play_card(card)?;
             output.pass_turn();
             return Ok(output);
         }
@@ -117,6 +114,21 @@ impl GameState {
             .into_iter()
             .filter(|x| current_players_hand.contains(x))
             .collect()
+    }
+
+    pub fn play_card(&mut self, card: Card) -> Result<(), GameStateError> {
+        let playable_cards = self.game_board.get_playable_cards();
+        if !playable_cards.contains(&card) {
+            return Err(GameStateError::UnplayableCard);
+        } else {
+            self.game_board
+                .play_card(card)
+                .map_err(|e| GameStateError::GameBoardError(e))?;
+            self.players[self.player_turn]
+                .remove_card(&card)
+                .map_err(|_| GameStateError::UnplayableCard)?;
+            return Ok(());
+        }
     }
 }
 
