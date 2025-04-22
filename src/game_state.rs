@@ -3,7 +3,7 @@ use crate::{Card, GameBoard, GameBoardError, MultiCounter, NumberEnum, Player, S
 use rand::{seq::SliceRandom, thread_rng};
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameState {
     game_board: GameBoard,
     pub players: Vec<Player>,
@@ -56,7 +56,7 @@ impl GameState {
         }
         let mut players = vec![Player::new(); number_of_players];
         for (i, hand) in hands.into_iter().enumerate() {
-            players[i].hand = hand;
+            players[i].hand = hand.into_iter().collect();
         }
         return Ok(GameState {
             game_board: GameBoard::new(),
@@ -84,8 +84,7 @@ impl GameState {
                 ))
             }
         };
-        self
-            .play_card(playable)?;
+        self.play_card(playable)?;
         self.pass_turn();
         return Ok(());
     }
@@ -96,8 +95,7 @@ impl GameState {
             return Err(GameStateError::UnplayableCard);
         } else {
             let mut output = self.clone();
-            output
-                .play_card(card)?;
+            output.play_card(card)?;
             output.pass_turn();
             return Ok(output);
         }
@@ -154,7 +152,7 @@ fn distribute_cards(number_of_players: usize, deck: Vec<Card>) -> Vec<Player> {
     }
     let counter = MultiCounter::new(vec![number_of_players, 52], false);
     for v in counter {
-        players[v[0]].hand.push(deck[v[1]].clone())
+        players[v[0]].hand.insert(deck[v[1]].clone());
     }
     players
 }

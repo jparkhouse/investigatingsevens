@@ -1,7 +1,7 @@
 use crate::{Card, NumberEnum, SuitEnum};
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Stack {
     pub suit: SuitEnum,
     up_card: Option<Card>,

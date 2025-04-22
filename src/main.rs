@@ -1,4 +1,3 @@
-
 // represents the cards, their suits and numbers (enums)
 mod card_and_enums;
 
@@ -17,6 +16,8 @@ mod game_state;
 // a little helper to distribute cards evenly
 mod multi_counter;
 
+use std::collections::HashSet;
+
 // republish some of the key objects for convenience
 pub use card_and_enums::{Card, NumberEnum, SuitEnum};
 pub use game_board::{GameBoard, GameBoardError};
@@ -32,60 +33,72 @@ enum DebugLevel {
     Full = 2,
 }
 
-const DEBUG_LEVEL: DebugLevel = DebugLevel::Basic;
+const DEBUG_LEVEL: DebugLevel = DebugLevel::None;
+const NUMBER_OF_PLAYERS: usize = 4;
 
 fn main() -> Result<(), String> {
-    const NUMBER_OF_PLAYERS: usize = 4;
-    
-
     let mut branches: Vec<GameState> = Vec::new();
+    let mut prev_game_states: HashSet<GameState> = HashSet::new();
     let initial = GameState::new(NUMBER_OF_PLAYERS).map_err(|e| e.to_string())?;
-    let mut victories: Vec<usize> = Vec::new();
+    let mut results: Vec<usize> = vec![0; NUMBER_OF_PLAYERS];
+    // since initially there won't be any branches,
+    // we need a lock to do the first few iterations
+    let mut no_results_yet = true;
 
     let mut game_state: GameState = initial;
     let mut next_game_state: Option<GameState> = None;
-    while victories.is_empty() || !branches.is_empty() {
+    while no_results_yet || !branches.is_empty() {
         if DEBUG_LEVEL >= DebugLevel::Full {
             println!("Player {} takes a turn", game_state.player_turn);
         }
+
+        // first we must log that we are processing this gamestate
+        prev_game_states.insert(game_state.clone());
+
+        // then we process it
         match assess_decision(game_state) {
             Ok(decision) => match decision {
                 Decision::Victory(player) => {
-                    victories.push(player);
+                    // we have at least one result, so we can release the lock
+                    no_results_yet = false;
+                    results[player] += 1;
                     if DEBUG_LEVEL >= DebugLevel::Basic {
-                        println!("A victory for player {}", player);
+                        println!("The {}th victory for player {}", results[player], player);
+                        println!("{:?}", results);
                     }
-                },
-                _ => next_game_state = Some(process_branches(&mut branches, decision)?),
+                }
+                Decision::NoPlayableCards(gs) | Decision::OnePlayableCard(gs) => {
+                    next_game_state = Some(gs)
+                }
+                Decision::MultiplePlayableCards(possible_gs) => {
+                    next_game_state =
+                        Some(add_new_branches_and_return_one(&mut branches, possible_gs)?)
+                }
             },
             Err(e) => return Err(e.to_string()),
         }
 
+        // check that the next game state is worth computing
+        while need_new_game_state(&next_game_state, &prev_game_states) {
+            if DEBUG_LEVEL >= DebugLevel::Full {
+                println!("Skipping previously seen state");
+            }
+            next_game_state = Some(get_next_branch(&mut branches)?);
+        }
+
+        // replace game_state with next
         game_state = match next_game_state {
-            Some(state) => {
+            Some(next) => {
                 next_game_state = None;
-                state
+                next
             }
             None => {
-
-                if branches.is_empty() {
-                    if DEBUG_LEVEL >= DebugLevel::Basic {
-                        println!("No more branches, game over");
-                    }
-                    break;
-                }
                 if DEBUG_LEVEL >= DebugLevel::Basic {
-                    println!("Loading the next parallel universe");
+                    println!("No more branches");
                 }
-                branches.pop().unwrap()
+                break;
             }
-        };
-    }
-
-    let mut results: Vec<usize> = vec![0; NUMBER_OF_PLAYERS];
-
-    for v in victories {
-        results[v] += 1;
+        }
     }
 
     println!("Results: {:?}", results);
@@ -93,27 +106,43 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn process_branches(
+fn add_new_branches_and_return_one(
     branches: &mut Vec<GameState>,
-    decision: Decision,
+    new_branches: Vec<GameState>,
 ) -> Result<GameState, String> {
-    match decision {
-        Decision::Victory(_) => Err("Victory decision leak".to_string()),
-        Decision::NoPlayableCards(state) => Ok(state),
-        Decision::OnePlayableCard(state) => Ok(state),
-        Decision::MultiplePlayableCards(states) => {
-            for state in states {
-                branches.push(state);
-            }
-            if DEBUG_LEVEL >= DebugLevel::Basic {
-                println!("Now up to {} parallel universes", branches.len());
-            }
-            match branches.pop() {
-                Some(state) => Ok(state),
-                None => Err("No states in branches".to_string()),
-            }
+    for state in new_branches {
+        branches.push(state);
+    }
+    if DEBUG_LEVEL >= DebugLevel::Basic {
+        println!("Now up to {} parallel universes", branches.len());
+    }
+    match branches.pop() {
+        Some(state) => Ok(state),
+        None => Err("No states in branches".to_string()),
+    }
+}
+
+fn get_next_branch(branches: &mut Vec<GameState>) -> Result<GameState, String> {
+    match branches.pop() {
+        Some(state) => Ok(state),
+        None => Err("No states in branches".to_string()),
+    }
+}
+
+fn need_new_game_state(
+    possible_state: &Option<GameState>,
+    previous_states: &HashSet<GameState>,
+) -> bool {
+    // if there is a possible next state,
+    if let Some(state) = possible_state {
+        // and we have not seen it before
+        if !previous_states.contains(state) {
+            // we can keep this one
+            return false;
         }
     }
+    // otherwise we need to get a new one
+    true
 }
 
 enum Decision {
@@ -138,9 +167,10 @@ fn assess_decision(mut game_state: GameState) -> Result<Decision, GameStateError
             if DEBUG_LEVEL >= DebugLevel::Full {
                 println!("No playable cards");
             }
-            
+
             game_state.pass_turn();
-            return Ok(Decision::NoPlayableCards(game_state))},
+            return Ok(Decision::NoPlayableCards(game_state));
+        }
         1 => {
             if DEBUG_LEVEL >= DebugLevel::Full {
                 println!("One playable card: {:?}", playable_cards[0]);
@@ -154,9 +184,12 @@ fn assess_decision(mut game_state: GameState) -> Result<Decision, GameStateError
                 .enumerate()
                 .map(|(universe_no, card)| {
                     if DEBUG_LEVEL >= DebugLevel::Full {
-                        println!("Creating parallel universe {} with card {:?}", universe_no, card);
+                        println!(
+                            "Creating parallel universe {} with card {:?}",
+                            universe_no, card
+                        );
                     }
-                    
+
                     game_state.play_card_and_return_new(card)
                 })
                 .collect();
@@ -167,4 +200,3 @@ fn assess_decision(mut game_state: GameState) -> Result<Decision, GameStateError
         }
     }
 }
-

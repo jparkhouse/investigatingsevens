@@ -4,7 +4,7 @@ use crate::{Card, NumberEnum, SuitEnum};
 use crate::{Stack, StackError};
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameBoard {
     spade_stack: Stack,
     club_stack: Stack,
